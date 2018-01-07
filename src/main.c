@@ -92,17 +92,6 @@ int main(void)
 	I2cDriver* i2cDriver = i2cInit();
 	HAL_Delay(50);
 
-	buffer[0] = 0x00;
-	buffer[1] = 0xFF;
-	buffer[2] = 0xFF;
-	i2cDriver->write(0x58, 0x01, buffer, 3);
-
-	buffer[0] = 0x00;
-	buffer[1] = 0x00;
-	buffer[2] = 0x01;
-	i2cDriver->write(0x58, 0x00, buffer, 3);
-
-	i2cDriver->read(0x58, 0x01, buffer, 3);
 
 	sprintf(uartBuffer, "Read '0x01' register value: %X \n\r", ((buffer[0] << 16) | (buffer[1] << 8) | buffer[2]));
 	uartDriver->writeString(uartBuffer);
