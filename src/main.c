@@ -12,8 +12,11 @@
 #include "stm32l4xx_nucleo.h"
 #include "stm32l4xx_hal.h"
 #include <stdlib.h>
+#include <string.h>
 #include "uart.h"
 #include "i2c.h"
+
+#include "AFE4404.h"
 
 /**
   * @brief  System Clock Configuration
@@ -72,39 +75,31 @@ void static SystemClock_Config(void)
 	}
 }
 
-int main(void)
+static void ledInit()
 {
-	HAL_Init();
-	SystemClock_Config();
-
-	char uartBuffer[50];
-	uint8_t buffer[3];
-
 	__HAL_RCC_GPIOB_CLK_ENABLE();
 	GPIO_InitTypeDef gpioHandle;
 	gpioHandle.Pin = GPIO_PIN_13;
 	gpioHandle.Mode = GPIO_MODE_OUTPUT_PP;
 	gpioHandle.Pull = GPIO_PULLUP;
 	HAL_GPIO_Init(GPIOB, &gpioHandle);
+}
 
+int main(void)
+{
+	char uartBuffer[50];
 
-	UartDriver* uartDriver = uartInit(1000000);
-	I2cDriver* i2cDriver = i2cInit();
-	HAL_Delay(50);
+	HAL_Init();
+	SystemClock_Config();
+	ledInit();
 
-	buffer[0] = 0x00;
-	buffer[1] = 0xFF;
-	buffer[2] = 0xFF;
-	i2cDriver->write(0x58, 0x01, buffer, 3);
+	UartDriver* 	uartDriver = uartInit(1000000);
+	I2cDriver* 		i2cDriver = i2cInit();
+	Afe4404Driver* 	afe4404driver = afe4404Init(i2cDriver->write, i2cDriver->read);
 
-	buffer[0] = 0x00;
-	buffer[1] = 0x00;
-	buffer[2] = 0x01;
-	i2cDriver->write(0x58, 0x00, buffer, 3);
+	afe4404driver->writeReg(0x01, 0xF0F3);
 
-	i2cDriver->read(0x58, 0x01, buffer, 3);
-
-	sprintf(uartBuffer, "Read '0x01' register value: %X \n\r", ((buffer[0] << 16) | (buffer[1] << 8) | buffer[2]));
+	sprintf(uartBuffer, "Read '0x01' register value: 0x%X \n\r", (unsigned int)afe4404driver->readReg());
 	uartDriver->writeString(uartBuffer);
 
 	while(1)
