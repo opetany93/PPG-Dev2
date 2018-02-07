@@ -19,6 +19,9 @@
 /* Private variables ---------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
+#include "AFE4404.h"
+
+extern Afe4404Driver* afe4404driver;
 
 /******************************************************************************/
 /*            	  	    Processor Exceptions Handlers                         */
@@ -36,4 +39,14 @@ void SysTick_Handler(void)
 	HAL_IncTick();
 	HAL_SYSTICK_IRQHandler();
 	system_cnt++;
+}
+
+void EXTI4_IRQHandler(void)
+{
+	if(__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_4) != RESET)
+	{
+		__HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_4);
+
+		afe4404driver->rdyPinCallback();
+	}
 }

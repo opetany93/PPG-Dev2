@@ -52,6 +52,7 @@ UartDriver* uartInit(uint32_t baudrate)
 	GPIO_InitTypeDef gpioInitStruct;
 
 	__HAL_RCC_GPIOA_CLK_ENABLE();
+	__HAL_RCC_USART2_CLK_ENABLE();
 
 	// PA2 TX PIN
 	gpioInitStruct.Pin = TX_PIN;
@@ -74,15 +75,11 @@ UartDriver* uartInit(uint32_t baudrate)
 	uartHandle.Init.Parity = USART_PARITY_NONE;
 	uartHandle.Init.Mode = USART_MODE_TX;
 
-	__HAL_RCC_USART2_CLK_ENABLE();
-
-	if( !HAL_USART_Init(&uartHandle))
+	if( !HAL_USART_Init(&uartHandle) )
 	{
 		driver->status = ERROR;
 		return driver;
 	}
-
-	__HAL_USART_ENABLE(&uartHandle);
 
 	driver->status = SUCCESS;
 	return driver;

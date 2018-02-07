@@ -9,6 +9,7 @@
 
 #define AFE_RESET_PIN_PORT		GPIOB
 #define AFE_RESET_PIN			GPIO_PIN_9
+
 #define AFE_RDY_PIN_PORT		GPIOB
 #define AFE_RDY_PIN				GPIO_PIN_4
 
@@ -128,12 +129,25 @@ void afeRdyPinInit(void)
 	__HAL_RCC_GPIOB_CLK_ENABLE();
 	GPIO_InitTypeDef gpioHandle;
 	gpioHandle.Pin = AFE_RDY_PIN;
-	gpioHandle.Mode = GPIO_MODE_INPUT;
+	gpioHandle.Mode = GPIO_MODE_IT_RISING;
 	gpioHandle.Pull = GPIO_NOPULL;
 	HAL_GPIO_Init(AFE_RDY_PIN_PORT, &gpioHandle);
+
+	HAL_NVIC_SetPriority(EXTI4_IRQn, 0, 1);
+	HAL_NVIC_EnableIRQ(EXTI4_IRQn);
 }
 
-uint8_t afeRdyPinRead(void)
+void measureTimePinInit(void)
 {
-	return HAL_GPIO_ReadPin(AFE_RDY_PIN_PORT, AFE_RDY_PIN);
+	__HAL_RCC_GPIOC_CLK_ENABLE();
+	GPIO_InitTypeDef gpioHandle;
+	gpioHandle.Pin = GPIO_PIN_10;
+	gpioHandle.Mode = GPIO_MODE_OUTPUT_PP;
+	gpioHandle.Pull = GPIO_PULLUP;
+	HAL_GPIO_Init(GPIOC, &gpioHandle);
+}
+
+void measureTimePinSet(uint8_t state)
+{
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, state);
 }
