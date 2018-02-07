@@ -9,14 +9,18 @@
 #define AFE4404_H_
 
 #include <stdint.h>
+#include "stm32l4xx_hal.h"
+
+#include "i2c.h"
 
 typedef struct{
 
-	uint32_t (*readReg)();
+	uint32_t (*readReg)(uint8_t address);
 	void (*writeReg)(uint8_t address, uint32_t value);
+	uint32_t (*readLed2)(void);
 
 }Afe4404Driver;
 
-Afe4404Driver* afe4404Init(void (*write)(uint8_t deviceAddress, uint8_t address, uint8_t* data, uint8_t size), void (*read)(uint8_t deviceAddress, uint8_t address, uint8_t* data, uint8_t size));
+Afe4404Driver* afe4404Init(I2cDriver* i2c, void (*setResetPin)(uint8_t state), uint8_t (*rdyPinRead)(void));
 
 #endif /* AFE4404_H_ */

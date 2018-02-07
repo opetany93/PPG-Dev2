@@ -11,9 +11,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32l4xx_hal.h"
 #include "stm32l4xx.h"
-#ifdef USE_RTOS_SYSTICK
-#include <cmsis_os.h>
-#endif
 #include "stm32l4xx_it.h"
 
 /* Private typedef -----------------------------------------------------------*/
@@ -27,6 +24,8 @@
 /*            	  	    Processor Exceptions Handlers                         */
 /******************************************************************************/
 
+extern volatile uint32_t system_cnt;
+
 /**
   * @brief  This function handles SysTick Handler, but only if no RTOS defines it.
   * @param  None
@@ -36,7 +35,5 @@ void SysTick_Handler(void)
 {
 	HAL_IncTick();
 	HAL_SYSTICK_IRQHandler();
-#ifdef USE_RTOS_SYSTICK
-	osSystickHandler();
-#endif
+	system_cnt++;
 }
