@@ -37,9 +37,9 @@ void uartWriteString(char* s)
 	while(*s){ uartWrite(*s++); }
 }
 
-HAL_StatusTypeDef uartWriteData(uint8_t* data, uint8_t size)
+void uartWriteData(uint8_t* data, uint8_t size)
 {
-	return HAL_USART_Transmit(&uartHandle, data, size, TX_TIMEOUT);
+	HAL_USART_Transmit(&uartHandle, data, size, TX_TIMEOUT);
 }
 
 UartDriver* uartInit(uint32_t baudrate)

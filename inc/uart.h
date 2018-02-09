@@ -15,7 +15,7 @@ typedef struct{
 
 	uint8_t status;
 	void (*writeString)(char* s);
-	HAL_StatusTypeDef (*writeData)(uint8_t* data, uint8_t size);
+	void (*writeData)(uint8_t* data, uint8_t size);
 
 }UartDriver;
 
