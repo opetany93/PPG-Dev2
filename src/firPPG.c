@@ -100,6 +100,8 @@ float firFilterPPG(uint32_t sample)
 	float y = 0;
 	uint16_t i = 0;
 
+	x[N-1] = sample;
+
 	for(i = 0; i < N; i++)
 	{
 		y = y + x[i]*h[N-i];
@@ -109,8 +111,6 @@ float firFilterPPG(uint32_t sample)
 	{
 		x[i] = x[i+1];
 	}
-
-	x[N-1] = sample;
 
 	return y;
 }
