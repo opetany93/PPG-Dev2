@@ -43,17 +43,18 @@ void _Error_Handler(char * file, int line);
 #include "arm_math.h"
 #include "arm_const_structs.h"
 
-#define LENGTH_SAMPLES 1024
+#define LENGTH_SAMPLES 2048
 /* -------------------------------------------------------------------
 * External Input and Output buffer Declarations for FFT Bin Example
 * ------------------------------------------------------------------- */
 float32_t bufferInput[LENGTH_SAMPLES];
+float32_t bufferOutput[LENGTH_SAMPLES];
 float32_t testOutput[LENGTH_SAMPLES/2];
 float32_t bufferForFFT[LENGTH_SAMPLES];
 /* ------------------------------------------------------------------
 * Global variables for FFT Bin Example
 * ------------------------------------------------------------------- */
-uint32_t fftSize = 512;
+uint32_t fftSize = 1024;
 uint32_t ifftFlag = 0;
 uint32_t doBitReverse = 1;
 /* Reference index at which max energy of bin ocuurs */
@@ -89,11 +90,17 @@ int main(void)
 
 	for(int i = 1; i < LENGTH_SAMPLES/2; i++)
 	{
-		freq[i] = freq[i-1] + ((float)SAMPLE_RATE_HZ)/512.0;
+		freq[i] = freq[i-1] + ((float)SAMPLE_RATE_HZ)/1024.0;
 	}
 
-	//arm_rfft_fast_instance_f32 S;
-	//arm_rfft_fast_init_f32(&S, 512);
+	arm_rfft_fast_instance_f32 S;
+	int arm_status = arm_rfft_fast_init_f32(&S, fftSize);
+
+	if(ARM_MATH_SUCCESS != arm_status)
+	{
+		_Error_Handler(__FILE__, __LINE__);
+	}
+
 
 
 	while(1)
@@ -107,26 +114,39 @@ int main(void)
 
 		measureTimePinSet(1);
 
-		for(int i = 0; i < (LENGTH_SAMPLES-2); i+=2)
-		{
+//		for(int i = 0; i < (LENGTH_SAMPLES-2); i+=2)
+//		{
+//
+//			bufferInput[i] = bufferInput[i+2];
+//			bufferInput[i+1] = bufferInput[i+3];
+//		}
+//
+//		bufferInput[LENGTH_SAMPLES-2] = y;
+//		bufferInput[LENGTH_SAMPLES-1] = 0;
 
-			bufferInput[i] = bufferInput[i+2];
-			bufferInput[i+1] = bufferInput[i+3];
+		for(int i = 0; i < (LENGTH_SAMPLES-1); i++)
+		{
+			bufferInput[i] = bufferInput[i+1];
 		}
 
-		bufferInput[LENGTH_SAMPLES-2] = y;
-		bufferInput[LENGTH_SAMPLES-1] = 0;
+		bufferInput[LENGTH_SAMPLES-1] = y;
 
 		memcpy(bufferForFFT, bufferInput, 4*LENGTH_SAMPLES);
 
+
+		arm_rfft_fast_f32(&S, bufferForFFT, bufferOutput, ifftFlag);
+
 		/* Process the data through the CFFT/CIFFT module */
-		arm_cfft_f32(&arm_cfft_sR_f32_len512, bufferForFFT, ifftFlag, doBitReverse);
-		//arm_rfft_f32(&S, buffer, testOutput);
+		//arm_cfft_f32(&arm_cfft_sR_f32_len512, bufferForFFT, ifftFlag, doBitReverse);
 		/* Process the data through the Complex Magnitude Module for
 		calculating the magnitude at each bin */
-		arm_cmplx_mag_f32(bufferForFFT, testOutput, fftSize);
+		arm_cmplx_mag_f32(bufferOutput, testOutput, fftSize);
 		/* Calculates maxValue and returns corresponding BIN value */
 		arm_max_f32(testOutput, fftSize, &maxValue, &testIndex);
+
+
+
+
 		measureTimePinSet(0);
 
 
