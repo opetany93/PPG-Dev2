@@ -151,3 +151,8 @@ void measureTimePinSet(uint8_t state)
 {
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, state);
 }
+
+void measureTimePinToggle(void)
+{
+	HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_10);
+}

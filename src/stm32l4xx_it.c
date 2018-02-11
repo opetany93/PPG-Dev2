@@ -19,15 +19,15 @@
 /* Private variables ---------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
-#include "AFE4404.h"
+#include <stdlib.h>
 
-extern Afe4404Driver* afe4404driver;
+volatile uint32_t system_cnt;
+
+extern void afeReadyInterruptHandler(void);
 
 /******************************************************************************/
 /*            	  	    Processor Exceptions Handlers                         */
 /******************************************************************************/
-
-extern volatile uint32_t system_cnt;
 
 /**
   * @brief  This function handles SysTick Handler, but only if no RTOS defines it.
@@ -47,6 +47,6 @@ void EXTI4_IRQHandler(void)
 	{
 		__HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_4);
 
-		afe4404driver->rdyPinCallback();
+		afeReadyInterruptHandler();
 	}
 }

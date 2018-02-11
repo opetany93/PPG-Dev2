@@ -20,5 +20,6 @@ void afeRdyPinInit(void);
 uint8_t afeRdyPinRead(void);
 void measureTimePinInit(void);
 void measureTimePinSet(uint8_t state);
+void measureTimePinToggle(void);
 
 #endif /* BOARDCONFIG_H_ */
