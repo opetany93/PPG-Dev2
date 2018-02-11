@@ -20,14 +20,26 @@
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 #include "AFE4404.h"
+#include "boardConfig.h"
+#include "arm_math.h"
+#include "firPPG.h"
+#include <stdlib.h>
+#include "uart.h"
 
-extern Afe4404Driver* afe4404driver;
+extern Afe4404Driver* 	afe4404driver;
+extern UartDriver* 		uartDriver;
 
+volatile uint8_t sampleCnt;
+volatile uint32_t system_cnt;
+
+extern volatile uint8_t doFFTflag;
+extern volatile float32_t pulse;
+extern float32_t bufferInput[8192];
+volatile float32_t sample;
+char buf[50];
 /******************************************************************************/
 /*            	  	    Processor Exceptions Handlers                         */
 /******************************************************************************/
-
-extern volatile uint32_t system_cnt;
 
 /**
   * @brief  This function handles SysTick Handler, but only if no RTOS defines it.
@@ -47,6 +59,30 @@ void EXTI4_IRQHandler(void)
 	{
 		__HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_4);
 
-		afe4404driver->rdyPinCallback();
+		sample = firFilterPPG(afe4404driver->readLed2InInterrupt());
+
+		measureTimePinSet(1);
+
+		sprintf(buf, "%f %f\n", sample, pulse);
+		uartDriver->writeString(buf);
+
+		for(int i = 0; i < (8192-1); i++)
+		{
+			bufferInput[i] = bufferInput[i+1];
+		}
+
+		bufferInput[8192-1] = sample;
+
+		if(99 > sampleCnt)
+		{
+			sampleCnt++;
+		}
+		else
+		{
+			doFFTflag = 1;
+			sampleCnt = 0;
+		}
+
+		measureTimePinSet(0);
 	}
 }

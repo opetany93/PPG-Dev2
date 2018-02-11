@@ -188,11 +188,16 @@ static void dataRdyCallback(void)
 	dataRdyToRead = 1;
 }
 
-static uint32_t readLed2()
+static uint32_t readLed2UsingCallback(void)
 {
 	while( 0 == dataRdyToRead );
 	dataRdyToRead = 0;
 
+	return readOutputReg(LED2VAL_REG);
+}
+
+static uint32_t readLed2InInterrupt(void)
+{
 	return readOutputReg(LED2VAL_REG);
 }
 
@@ -203,7 +208,8 @@ Afe4404Driver* afe4404Init(I2cDriver* i2c, void (*setResetPin)(uint8_t state))
 	Afe4404Driver *driver = malloc(sizeof(Afe4404Driver));
 	driver->readReg = readReg;
 	driver->writeReg = writeReg;
-	driver->readLed2 = readLed2;
+	driver->readLed2UsingCallback = readLed2UsingCallback;
+	driver->readLed2InInterrupt = readLed2InInterrupt;
 	driver->rdyPinCallback = dataRdyCallback;
 
 	(*setResetPin)(1);
