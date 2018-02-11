@@ -17,8 +17,8 @@ typedef struct{
 
 	uint32_t (*readReg)(uint8_t address);
 	void (*writeReg)(uint8_t address, uint32_t value);
-	uint32_t (*readLed2UsingCallback)(void);
-	uint32_t (*readLed2InInterrupt)(void);
+	uint32_t (*readLed2Blocking)(void);
+	uint32_t (*readLed2NoBlocking)(void);
 	void (*rdyPinCallback)(void);
 
 }Afe4404Driver;

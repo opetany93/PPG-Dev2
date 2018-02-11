@@ -21,59 +21,105 @@
 #include "RTSP_communication.h"
 #include "AFE4404.h"
 
-// ================ RTSP ===============================
-#define RTSP_ENABLE		0
+/* -------------------------------------------------------------------
+* RTSP
+* ------------------------------------------------------------------- */
+#define RTSP_ENABLE		1
 
 #if RTSP_ENABLE
 	#include <math.h>
+	int rtspBuffer[2];
+#else
+	char uartBuffer[50];
 #endif
 
-// ============== system definitions =====================
+/* -------------------------------------------------------------------
+* System definitions
+* ------------------------------------------------------------------- */
 UartDriver* 	uartDriver;
 Afe4404Driver* 	afe4404driver;
 
-volatile uint32_t system_cnt = 0;
+volatile uint32_t system_cnt = 0;		/* incremented in the SysTick interrupt every 1 ms */
 void _Error_Handler(char * file, int line);
 
-// =================== FFT =======================
-// FFT and sampling configuration
+/* -------------------------------------------------------------------
+* FFT declarations
+* ------------------------------------------------------------------- */
 #define SAMPLE_RATE_HZ 100
 
 #include "arm_math.h"
 #include "arm_const_structs.h"
 
-#define LENGTH_SAMPLES 8192
 /* -------------------------------------------------------------------
-* External Input and Output buffer Declarations for FFT Bin Example
+* External Input and Output buffer Declarations for FFT
 * ------------------------------------------------------------------- */
-float32_t bufferInput[LENGTH_SAMPLES];
-float32_t bufferOutput[LENGTH_SAMPLES];
-float32_t testOutput[LENGTH_SAMPLES/2];
-
-float32_t bufferForFFT[LENGTH_SAMPLES];
+#define N 4096
+float32_t bufferInput[N];
+float32_t bufferOutput[N];
+float32_t magnitudesOutput[N];
+float32_t bufferForFFT[N];
 /* ------------------------------------------------------------------
-* Global variables for FFT Bin Example
+* Global variables for FFT
 * ------------------------------------------------------------------- */
 uint32_t fftSize = 4096;
 uint32_t ifftFlag = 0;
 uint32_t doBitReverse = 1;
-/* Reference index at which max energy of bin ocuurs */
-uint32_t testIndex = 0;
+uint32_t maxValueIndex = 0;											/* Reference index at which max energy of bin ocuurs */
 
+/* ------------------------------------------------------------------
+* Global variables (flags)
+* ------------------------------------------------------------------- */
 volatile uint8_t doFFTflag;
-volatile float32_t pulse;
 
-// ======================================================================================
-int main(void)
+/* ------------------------------------------------------------------
+* Global variables for storing calculated values
+* ------------------------------------------------------------------- */
+volatile float32_t pulse;
+/* ------------------------------------------------------------------ */
+
+void afeReadyInterruptHandler(void)
 {
+	static volatile uint8_t sampleCnt = 0;
+	static float32_t sample;
+
+	sample = firFilterPPG(afe4404driver->readLed2NoBlocking());		/* Read and filter the sample of PPG signal */
+
+	// ===================== measured execution time = 1.9 ms (using sprintf) ============
+	measureTimePinSet(1);
 #if RTSP_ENABLE
-	int rtspBuffer[1];
+	rtspBuffer[0] = round(sample);
+	rtspBuffer[1] = round(pulse);
+	rtspSendData(uartDriver->writeData, rtspBuffer, 2);
 #else
-	char result[50];
+	sprintf(uartBuffer, "%f %f\n", sample, pulse);
+	uartDriver->writeString(uartBuffer);
 #endif
 
+	for(int i = 0; i < (N-1); i++)		// bytes shifting by one in buffer
+	{
+		bufferInput[i] = bufferInput[i+1];
+	}
+
+	bufferInput[N-1] = sample;			// store sample at last element in buffer
+
+	if(99 > sampleCnt)
+	{
+		sampleCnt++;
+	}
+	else
+	{
+		doFFTflag = 1;
+		sampleCnt = 0;
+	}
+	measureTimePinSet(0);
+	// ===================================================================================
+}
+
+/* ------------------------------------------------------------------ */
+int main(void)
+{
 	float32_t maxValue;
-	float32_t freq[LENGTH_SAMPLES/2]={0};
+	float32_t freq[N] = {0};
 
 	HAL_Init();
 	clockInit();
@@ -89,13 +135,14 @@ int main(void)
 
 	afeRdyPinInit();
 
-	for(int i = 1; i < LENGTH_SAMPLES/2; i++)
+	/* generate axis frequency for FFT */
+	for(int i = 1; i < N; i++)
 	{
-		freq[i] = freq[i-1] + ((float)SAMPLE_RATE_HZ)/4096.0;
+		freq[i] = freq[i-1] + ((float)SAMPLE_RATE_HZ)/((float)N);
 	}
 
 	arm_rfft_fast_instance_f32 S;
-	int arm_status = arm_rfft_fast_init_f32(&S, fftSize);
+	int arm_status = arm_rfft_fast_init_f32(&S, fftSize);		/* FFT module initialization */
 
 	if(ARM_MATH_SUCCESS != arm_status)
 	{
@@ -104,31 +151,24 @@ int main(void)
 
 	while(1)
 	{
-#if RTSP_ENABLE
-		rtspBuffer[0] = round(firFilterPPG(afe4404driver->readLed2UsingCallback()));
-		rtspSendData(uartDriver->writeData, rtspBuffer, 1);
-#else
 		if(doFFTflag)
 		{
-			measureTimePinSet(1);
-
 			doFFTflag = 0;
 
-			memcpy(bufferForFFT, bufferInput, 4*LENGTH_SAMPLES);
-			measureTimePinSet(0);
-			arm_rfft_fast_f32(&S, bufferForFFT, bufferOutput, ifftFlag);
-			arm_cmplx_mag_f32(bufferOutput, testOutput, fftSize);		/* Process the data through the Complex Magnitude Module for calculating the magnitude at each bin */
-			arm_max_f32(testOutput, fftSize, &maxValue, &testIndex); 	/* Calculates maxValue and returns corresponding BIN value */
+			memcpy(bufferForFFT, bufferInput, 4*N);								/* Measured execution time = 115 us (LENGHT_SAMPLES = 4096) */
 
-			pulse = 60.0 * freq[testIndex];
+			// ===== Measured execution time = 37 ms (fftSize = 4096) ========
+			arm_rfft_fast_f32(&S, bufferForFFT, bufferOutput, ifftFlag);		/* Perform a FFT transformation of PPG signal */
+			arm_cmplx_mag_f32(bufferOutput, magnitudesOutput, fftSize);			/* Process the data through the Complex Magnitude Module for calculating the magnitude at each bin */
+			arm_max_f32(magnitudesOutput, fftSize, &maxValue, &maxValueIndex); 	/* Calculates maxValue and returns corresponding BIN value */
+			// ===============================================================
 
-
+			pulse = 60.0 * freq[maxValueIndex];									/* Calculate pulse */
 		}
-#endif
 	}
 }
 
-// ================================
+/* ------------------------------------------------------------------ */
 void _Error_Handler(char * file, int line)
 {
 	char buf_out[50];
