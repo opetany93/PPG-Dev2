@@ -24,7 +24,7 @@
 /* -------------------------------------------------------------------
 * RTSP
 * ------------------------------------------------------------------- */
-#define RTSP_ENABLE		1
+#define RTSP_ENABLE		0
 
 #if RTSP_ENABLE
 	#include <math.h>
@@ -84,8 +84,7 @@ void afeReadyInterruptHandler(void)
 
 	sample = firFilterPPG(afe4404driver->readLed2NoBlocking());		/* Read and filter the sample of PPG signal */
 
-	// ===================== measured execution time = 1.9 ms (using sprintf) ============
-	measureTimePinSet(1);
+	// ===================== measured execution time = 1.9 ms (using sprintf) and 1.6 ms (using RTSP) ============
 #if RTSP_ENABLE
 	rtspBuffer[0] = round(sample);
 	rtspBuffer[1] = round(pulse);
@@ -111,8 +110,7 @@ void afeReadyInterruptHandler(void)
 		doFFTflag = 1;
 		sampleCnt = 0;
 	}
-	measureTimePinSet(0);
-	// ===================================================================================
+	// ========================================================================================================
 }
 
 /* ------------------------------------------------------------------ */
