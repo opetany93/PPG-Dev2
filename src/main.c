@@ -24,7 +24,7 @@
 /* -------------------------------------------------------------------
 * RTSP
 * ------------------------------------------------------------------- */
-#define RTSP_ENABLE		1
+#define RTSP_ENABLE		0
 
 #if RTSP_ENABLE
 	#include <math.h>
@@ -54,10 +54,13 @@ void _Error_Handler(char * file, int line);
 * External Input and Output buffer Declarations for FFT
 * ------------------------------------------------------------------- */
 #define N 4096
+uint32_t  noFilteredBufferInput[N];
 float32_t bufferInput[N];
 float32_t bufferOutput[N];
 float32_t magnitudesOutput[N];
 float32_t bufferForFFT[N];
+float32_t bufferInForMatlab[N];
+uint32_t  noFilteredBufferInForMatlab[N];
 /* ------------------------------------------------------------------
 * Global variables for FFT
 * ------------------------------------------------------------------- */
@@ -81,19 +84,28 @@ void afeReadyInterruptHandler(void)
 {
 	static volatile uint8_t sampleCnt = 0;
 	static float32_t sample;
+	static uint32_t noFilteredSample;
 
-	sample = firFilterPPG(afe4404driver->readLed2NoBlocking());		/* Read and filter the sample of PPG signal */
+	noFilteredSample = afe4404driver->readLed2NoBlocking();
+	sample = firFilterPPG(noFilteredSample);		/* Read and filter the sample of PPG signal */
 
-	// ===================== measured execution time = 1.9 ms (using sprintf) ============
+	// ===================== measured execution time = 1.9 ms (using sprintf) and 1.6 (using RTSP) ============
 	measureTimePinSet(1);
 #if RTSP_ENABLE
 	rtspBuffer[0] = round(sample);
 	rtspBuffer[1] = round(pulse);
 	rtspSendData(uartDriver->writeData, rtspBuffer, 2);
 #else
-	sprintf(uartBuffer, "%f %f\n", sample, pulse);
-	uartDriver->writeString(uartBuffer);
+	//sprintf(uartBuffer, "%f %f\n", sample, pulse);
+	//uartDriver->writeString(uartBuffer);
 #endif
+
+	for(int i = 0; i < (N-1); i++)		// bytes shifting by one in buffer
+	{
+		noFilteredBufferInput[i] = noFilteredBufferInput[i+1];
+	}
+
+	noFilteredBufferInput[N-1] = noFilteredSample;			// store sample at last element in buffer
 
 	for(int i = 0; i < (N-1); i++)		// bytes shifting by one in buffer
 	{
@@ -112,7 +124,7 @@ void afeReadyInterruptHandler(void)
 		sampleCnt = 0;
 	}
 	measureTimePinSet(0);
-	// ===================================================================================
+	// ========================================================================================================
 }
 
 /* ------------------------------------------------------------------ */
@@ -157,6 +169,9 @@ int main(void)
 
 			memcpy(bufferForFFT, bufferInput, 4*N);								/* Measured execution time = 115 us (LENGHT_SAMPLES = 4096) */
 
+			memcpy(bufferInForMatlab, bufferInput, 4*N);
+			memcpy(noFilteredBufferInForMatlab, noFilteredBufferInput, 4*N);
+
 			// ===== Measured execution time = 37 ms (fftSize = 4096) ========
 			arm_rfft_fast_f32(&S, bufferForFFT, bufferOutput, ifftFlag);		/* Perform a FFT transformation of PPG signal */
 			arm_cmplx_mag_f32(bufferOutput, magnitudesOutput, fftSize);			/* Process the data through the Complex Magnitude Module for calculating the magnitude at each bin */
@@ -164,6 +179,18 @@ int main(void)
 			// ===============================================================
 
 			pulse = 60.0 * freq[maxValueIndex];									/* Calculate pulse */
+
+			sprintf(uartBuffer, " --- signal PPG and FFT magnitudes buffer: ---\n\r");
+			uartDriver->writeString(uartBuffer);
+
+			for (int i = 0; i < N; i++)
+			{
+				sprintf(uartBuffer, "%lu %f %f\n", noFilteredBufferInForMatlab[i], bufferInForMatlab[i], magnitudesOutput[i]);
+				uartDriver->writeString(uartBuffer);
+			}
+
+			sprintf(uartBuffer, "\n\r---------- Calculated pulse: %f\n\r", pulse);
+			uartDriver->writeString(uartBuffer);
 		}
 	}
 }
