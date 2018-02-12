@@ -123,11 +123,12 @@ int main(void)
 	clockInit();
 	HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_2);
 
-	uartDriver = uartInit(1000000);
+	// GPIO inits
 	ledInit();
 	afeResetPinInit();
 	measureTimePinInit();
 
+	uartDriver = uartInit(1000000);
 	I2cDriver* i2c1Driver = i2c1Init();
 	afe4404driver = afe4404Init(i2c1Driver, afeResetPinSet);
 

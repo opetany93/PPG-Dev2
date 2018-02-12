@@ -46,7 +46,7 @@ I2cDriver* i2c1Init()
 	__HAL_RCC_I2C1_CLK_ENABLE();			/* Enable I2C1 clock */
 
 	/* I2C GPIO pins configuration  */
-	GPIO_InitStruct.Pin       = GPIO_PIN_9 | GPIO_PIN_10;
+	GPIO_InitStruct.Pin       = GPIO_PIN_9 | GPIO_PIN_10;	/* SCL = PA9, SDA = PA10 */
 	GPIO_InitStruct.Mode      = GPIO_MODE_AF_OD;
 	GPIO_InitStruct.Pull      = GPIO_PULLUP;
 	GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_MEDIUM;
